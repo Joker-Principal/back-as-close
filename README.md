@@ -17,7 +17,6 @@ This approach is simpler and more reliable than checking `history.length`, which
 
 - **Mouse side back button** — Captured via `auxclick` event
 - **Alt+Left keyboard shortcut** — Captured via `keydown` event
-- **BrowserBack key** — Captured when the browser emits the BrowserBack key event
 
 ## Not Supported
 

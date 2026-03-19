@@ -17,7 +17,6 @@
 
 - **鼠标侧键** — 通过 `auxclick` 事件捕获
 - **Alt+Left 键盘快捷键** — 通过 `keydown` 事件捕获
-- **BrowserBack 键** — 当浏览器发出 BrowserBack 键事件时捕获
 
 ## 不支持的方式
 
