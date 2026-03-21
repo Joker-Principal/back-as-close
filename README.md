@@ -1,87 +1,93 @@
 # back as close
 
-This Chrome extension closes the current tab when you trigger Back at the beginning of its history, and lets you quickly restore it if the close was accidental.
+English README: [README.en.md](README.en.md)
 
-## What It Does
+这是一个 Chrome 浏览器扩展：当你在当前标签页已经无法继续后退时触发后退操作，它会关闭当前标签页；如果是误关，还可以在短时间内快速恢复。
 
-- Normal Back navigation still works when the current tab has earlier history entries.
-- If there is nothing left to go back to, the extension closes the current tab instead.
-- If the tab was closed by mistake, you can use Forward within a short time window to restore it.
-- A lightweight banner appears after the tab closes, showing the closed tab title and a restore button.
-- The banner adapts to light and dark themes automatically.
+## 功能介绍
 
-## Typical Flow
+- 当标签页仍有可后退历史时，后退行为保持正常。
+- 当标签页已经在历史起点时，再次后退会关闭当前标签页。
+- 如果这是误操作，你可以在短暂的恢复窗口内通过前进或横幅按钮恢复标签页。
+- 关闭后会出现一个轻量横幅，显示被关闭标签页的标题，并提供恢复入口。
+- 横幅会根据浅色/暗色主题自动调整样式。
 
-1. Open a page and browse normally.
-2. Trigger Back with your mouse side button or keyboard shortcut.
-3. If the tab can still go back, the page navigates normally.
-4. If the tab cannot go back anymore, the tab closes.
-5. If that close was accidental, trigger Forward or click the banner button to restore the tab before the timeout expires.
+## 典型使用流程
 
-## Supported Shortcuts
+1. 正常打开网页并浏览。
+2. 用鼠标侧键或键盘快捷键触发后退。
+3. 如果当前标签页还能后退，页面就正常返回上一页。
+4. 如果已经没有可后退历史，当前标签页会被关闭。
+5. 如果关错了，可以在超时前使用前进操作或点击横幅中的“恢复”按钮重新打开标签页。
 
-- Back via mouse side back button
-- Back via `Alt+Left` or the browser back key
-- Forward-based restore via mouse side forward button
-- Forward-based restore via `Alt+Right` or the browser forward key
+## 支持的快捷方式
 
-## Restore Experience
+- 鼠标侧键后退
+- `Alt+Left` 或浏览器后退键
+- 鼠标侧键前进用于恢复
+- `Alt+Right` 或浏览器前进键用于恢复
 
-- After a close, the extension keeps a short restore window.
-- During that time, the current page can show a restore banner.
-- The banner includes the closed tab title, a direct restore button, and a visual countdown.
-- Once the timeout expires, Forward returns to its normal browser behavior.
+## 恢复体验
 
-## Options
+- 标签页关闭后，扩展会保留一个短暂的恢复窗口。
+- 在这段时间内，当前页面会显示恢复横幅。
+- 横幅会显示被关闭标签页标题、直接恢复按钮和可视化倒计时进度。
+- 超时后，前进行为会恢复为浏览器默认行为。
 
-- You can configure the restore timeout in the extension options page.
-- The timeout is stored with Chrome sync storage.
-- The default value is small on purpose, so accidental closes are easy to undo without changing normal browsing too much.
+## 配置项
 
-## Limits
+- 可以在扩展的选项页中配置恢复时间。
+- 配置通过 Chrome sync storage 保存。
+- 默认时间刻意设置得较短，方便撤销误关，同时尽量不影响日常浏览操作。
 
-- The browser toolbar Back button cannot be intercepted by Chrome extensions.
-- Pages using `data:`, `blob:`, or `about:` URLs are not handled because content scripts do not run there.
-- The restore window is temporary. If it expires, the extension stops offering recovery for that tab.
+## 使用限制
 
-## Installation
+- 浏览器工具栏上的后退按钮无法被 Chrome 扩展拦截。
+- `data:`、`blob:`、`about:` 等页面无法处理，因为内容脚本不会在这些页面中运行。
+- 恢复窗口是临时的，超时后该次关闭将不再提供恢复。
 
-1. Clone the repository or download the source code.
-2. Install dependencies with `npm install`.
-3. Build the extension with `npm run build`.
-4. Open Chrome and navigate to `chrome://extensions/`.
-5. Enable **Developer mode** (toggle in top-right corner).
-6. Click **Load unpacked** and select the `dist` directory.
+## 安装步骤
 
-The extension starts working immediately after loading.
+1. 克隆此仓库或下载源代码。
+2. 运行 `npm install` 安装依赖。
+3. 运行 `npm run build` 构建扩展。
+4. 打开 Chrome，进入 `chrome://extensions/`。
+5. 启用**开发者模式**（右上角的切换开关）。
+6. 点击**加载已解压的扩展程序**，选择 `dist` 目录。
 
-## Development
+加载完成后，扩展会立即开始工作。
 
-- Source code is written in TypeScript.
-- Build output is generated into `dist/`.
-- Use `npm run watch` during development.
-- Use `npm run typecheck` for type checking only.
+## 开发说明
 
-## Project Structure
+- 源码使用 TypeScript。
+- 构建产物输出到 `dist/`。
+- 开发时可使用 `npm run watch` 持续编译。
+- 如只做类型检查，可运行 `npm run typecheck`。
 
-- `src/history-check.ts`: content script bootstrap
-- `src/history-main.ts`: page-side interaction and banner UI
-- `src/service-worker.ts`: close and restore coordination
-- `src/options.html` and `src/options.ts`: restore timeout settings
+## 项目结构
 
-## Debugging
+- `src/history-check.ts`：内容脚本引导入口
+- `src/history-main.ts`：页面侧交互与横幅 UI
+- `src/service-worker.ts`：关闭与恢复流程协调
+- `src/options.html` 和 `src/options.ts`：恢复时间设置页
 
-Debug logs are enabled by default.
+## 调试
 
-- Content logs appear in the page DevTools console with the prefix `[BackAsClose][Content]`.
-- Background logs appear in the extension service worker console with the prefix `[BackAsClose][Background]`.
-- Disable logs by setting `DEBUG_LOG_ENABLED = false` in `src/history-main.ts` and `src/service-worker.ts`.
+调试日志默认开启。
 
-## Manual Verification
+- 内容脚本日志显示在页面 DevTools 控制台中，前缀为 `[BackAsClose][Content]`。
+- 后台日志显示在扩展的 Service Worker 控制台中，前缀为 `[BackAsClose][Background]`。
+- 如需关闭日志，可将 `src/history-main.ts` 和 `src/service-worker.ts` 中的 `DEBUG_LOG_ENABLED` 改为 `false`。
 
-1. Open a new tab and navigate: **Page A** → **Page B** → **Page C**.
-2. Press Back until you return to **Page A**.
-3. Press Back again.
-4. Verify that the tab closes.
-5. Within the configured restore window, press Forward or click **Restore** in the banner.
-6. Verify that the closed tab reopens.
+## 手动验证
+
+1. 打开新标签页，依次浏览：**页面 A** → **页面 B** → **页面 C**。
+2. 连续后退，直到回到**页面 A**。
+3. 再次触发后退。
+4. 验证当前标签页被关闭。
+5. 在配置的恢复时间内，触发前进或点击横幅中的**恢复**按钮。
+6. 验证被关闭的标签页重新打开。
+
+## 协议
+
+本项目基于 MIT 协议发布。详见 [LICENSE](LICENSE)。
