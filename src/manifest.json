@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "back as close",
+  "version": "1.2",
+  "description": "Close the current tab when Back is triggered with no further history.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "options_ui": {
+    "page": "src/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "src/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/history-check.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": ["<all_urls>"],
+      "resources": [
+        "src/history-main.js",
+        "src/shared/message-types.js",
+        "src/shared/settings.js",
+        "assets/icons/icon-128.png"
+      ]
+    }
+  ]
+}

@@ -26,11 +26,20 @@
 ## 安装步骤
 
 1. 克隆此仓库或下载源代码。
-2. 打开 Chrome，进入 `chrome://extensions/`。
-3. 启用**开发者模式**（右上角的切换开关）。
-4. 点击**加载已解压的扩展程序**，选择本项目目录。
+2. 运行 `npm install` 安装依赖。
+3. 运行 `npm run build` 构建扩展。
+4. 打开 Chrome，进入 `chrome://extensions/`。
+5. 启用**开发者模式**（右上角的切换开关）。
+6. 点击**加载已解压的扩展程序**，选择 `dist` 目录。
 
 扩展加载完成后，会立即在所有页面上开始拦截后退操作。
+
+## 开发说明
+
+- 源码使用 TypeScript，位于 `src/*.ts`。
+- 构建产物输出到 `dist/`。
+- 开发时可使用 `npm run watch` 持续编译。
+- 如只需做类型检查，可运行 `npm run typecheck`。
 
 ## UI 界面
 
@@ -49,7 +58,7 @@
   - 查看方式：打开 `chrome://extensions/` → 找到本扩展 → 点击**检查**下的**Service worker**。
   - 日志内容：标签页关闭操作和遇到的任何错误。
 
-如要禁用日志，请在 `src/history-check.js` 和 `src/service-worker.js` 中将 `DEBUG_LOG_ENABLED` 设置为 `false`。
+如要禁用日志，请在 `src/history-check.ts` 和 `src/service-worker.ts` 中将 `DEBUG_LOG_ENABLED` 设置为 `false`。
 
 ## 手动验证
 

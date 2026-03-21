@@ -26,11 +26,20 @@ This approach is simpler and more reliable than checking `history.length`, which
 ## Installation
 
 1. Clone the repository or download the source code.
-2. Open Chrome and navigate to `chrome://extensions/`.
-3. Enable **Developer mode** (toggle in top-right corner).
-4. Click **Load unpacked** and select the directory containing this project.
+2. Install dependencies with `npm install`.
+3. Build the extension with `npm run build`.
+4. Open Chrome and navigate to `chrome://extensions/`.
+5. Enable **Developer mode** (toggle in top-right corner).
+6. Click **Load unpacked** and select the `dist` directory.
 
 The extension will load immediately and start intercepting back navigation on all pages.
+
+## Development
+
+- Source code is written in TypeScript under `src/*.ts`.
+- Build output is generated into `dist/`.
+- Use `npm run watch` during development for continuous compilation.
+- Run `npm run typecheck` for type checking without emitting files.
 
 ## UI Surface
 
@@ -49,7 +58,7 @@ Debug logs are enabled by default and provide detailed information about extensi
   - View logs: Open `chrome://extensions/` → Find this extension → Click **Service worker** under "Inspect".
   - Logs show: Tab close operations and any errors encountered.
 
-Disable logs by setting `DEBUG_LOG_ENABLED = false` in `src/history-check.js` and `src/service-worker.js`.
+Disable logs by setting `DEBUG_LOG_ENABLED = false` in `src/history-check.ts` and `src/service-worker.ts`.
 
 ## Manual Verification
 
