@@ -1,27 +1,48 @@
 # back as close
 
-This Chrome extension automatically closes the current tab when you trigger Back at the end of browser history (the first page in the session).
+This Chrome extension closes the current tab when you trigger Back at the beginning of its history, and lets you quickly restore it if the close was accidental.
 
-## How It Works
+## What It Does
 
-The extension intercepts back navigation attempts and determines whether more history exists:
+- Normal Back navigation still works when the current tab has earlier history entries.
+- If there is nothing left to go back to, the extension closes the current tab instead.
+- If the tab was closed by mistake, you can use Forward within a short time window to restore it.
+- A lightweight banner appears after the tab closes, showing the closed tab title and a restore button.
+- The banner adapts to light and dark themes automatically.
 
-1. When you activate Back (mouse button, Alt+Left, or BrowserBack key), the extension calls `history.back()`.
-2. It waits 200ms for navigation to complete, then checks if the URL changed.
-3. **If URL changed**: Normal navigation occurred. The extension does nothing.
-4. **If URL unchanged**: You're at the first page (no history left). The extension closes the tab.
+## Typical Flow
 
-This approach is simpler and more reliable than checking `history.length`, which can be affected by same-origin redirects and other edge cases.
+1. Open a page and browse normally.
+2. Trigger Back with your mouse side button or keyboard shortcut.
+3. If the tab can still go back, the page navigates normally.
+4. If the tab cannot go back anymore, the tab closes.
+5. If that close was accidental, trigger Forward or click the banner button to restore the tab before the timeout expires.
 
-## Supported Triggers
+## Supported Shortcuts
 
-- **Mouse side back button** — Captured via `auxclick` event
-- **Alt+Left keyboard shortcut** — Captured via `keydown` event
+- Back via mouse side back button
+- Back via `Alt+Left` or the browser back key
+- Forward-based restore via mouse side forward button
+- Forward-based restore via `Alt+Right` or the browser forward key
 
-## Not Supported
+## Restore Experience
 
-- Browser toolbar Back button (cannot be intercepted by Chrome extensions)
-- Pages in `data:`, `blob:`, or `about:` protocols (content scripts don't run there)
+- After a close, the extension keeps a short restore window.
+- During that time, the current page can show a restore banner.
+- The banner includes the closed tab title, a direct restore button, and a visual countdown.
+- Once the timeout expires, Forward returns to its normal browser behavior.
+
+## Options
+
+- You can configure the restore timeout in the extension options page.
+- The timeout is stored with Chrome sync storage.
+- The default value is small on purpose, so accidental closes are easy to undo without changing normal browsing too much.
+
+## Limits
+
+- The browser toolbar Back button cannot be intercepted by Chrome extensions.
+- Pages using `data:`, `blob:`, or `about:` URLs are not handled because content scripts do not run there.
+- The restore window is temporary. If it expires, the extension stops offering recovery for that tab.
 
 ## Installation
 
@@ -32,55 +53,35 @@ This approach is simpler and more reliable than checking `history.length`, which
 5. Enable **Developer mode** (toggle in top-right corner).
 6. Click **Load unpacked** and select the `dist` directory.
 
-The extension will load immediately and start intercepting back navigation on all pages.
+The extension starts working immediately after loading.
 
 ## Development
 
-- Source code is written in TypeScript under `src/*.ts`.
+- Source code is written in TypeScript.
 - Build output is generated into `dist/`.
-- Use `npm run watch` during development for continuous compilation.
-- Run `npm run typecheck` for type checking without emitting files.
+- Use `npm run watch` during development.
+- Use `npm run typecheck` for type checking only.
 
-## UI Surface
+## Project Structure
 
-- The extension does not provide a popup or toolbar action workflow.
-- After installation, it runs only through the registered content script and background service worker.
+- `src/history-check.ts`: content script bootstrap
+- `src/history-main.ts`: page-side interaction and banner UI
+- `src/service-worker.ts`: close and restore coordination
+- `src/options.html` and `src/options.ts`: restore timeout settings
 
-## Debug Logging
+## Debugging
 
-Debug logs are enabled by default and provide detailed information about extension behavior:
+Debug logs are enabled by default.
 
-- **Content script logs** appear in the page's DevTools Console with prefix `[BackAsClose][Content]`.
-  - View logs: Right-click on any page → **Inspect** → **Console** tab.
-  - Logs show: Back events captured, URL comparisons, close decisions, and page unload events.
-
-- **Background service worker logs** appear in the extension's service worker console with prefix `[BackAsClose][Background]`.
-  - View logs: Open `chrome://extensions/` → Find this extension → Click **Service worker** under "Inspect".
-  - Logs show: Tab close operations and any errors encountered.
-
-Disable logs by setting `DEBUG_LOG_ENABLED = false` in `src/history-check.ts` and `src/service-worker.ts`.
+- Content logs appear in the page DevTools console with the prefix `[BackAsClose][Content]`.
+- Background logs appear in the extension service worker console with the prefix `[BackAsClose][Background]`.
+- Disable logs by setting `DEBUG_LOG_ENABLED = false` in `src/history-main.ts` and `src/service-worker.ts`.
 
 ## Manual Verification
 
-Test the extension with this simple scenario:
-
 1. Open a new tab and navigate: **Page A** → **Page B** → **Page C**.
-2. Trigger Back using your mouse side button (or press Alt+Left).
-3. Verify: You're now on **Page B**. Trigger Back again.
-4. Verify: You're now on **Page A**. This shows normal back navigation works.
-5. Trigger Back one more time while on **Page A**.
-6. Expected result: **The tab closes** (since there's no history to go back to).
-
-You can also open the DevTools Console (F12) to see detailed logs from `[BackAsClose][Content]` showing each decision.
-
-## Implementation Notes
-
-- **URL-based detection**: The extension compares URLs before and after `history.back()` to determine if navigation occurred, rather than checking `history.length`. This is more reliable.
-  
-- **Stateless design**: The extension has no persistent state, session storage, or cross-tab communication. Each tab operates independently.
-
-- **Platform compatibility**: Works on any page served via http, https, or file protocols. Skips editable elements (INPUT, TEXTAREA, SELECT, contentEditable) to avoid interfering with text editing.
-
-- **Tab isolation**: When a tab is closing, the `beforeunload` event sets a flag to prevent the background script from receiving stale messages, ensuring no cross-tab side effects.
-
-- **Lightweight**: The entire extension is ~200 lines of code with zero external dependencies.
+2. Press Back until you return to **Page A**.
+3. Press Back again.
+4. Verify that the tab closes.
+5. Within the configured restore window, press Forward or click **Restore** in the banner.
+6. Verify that the closed tab reopens.
