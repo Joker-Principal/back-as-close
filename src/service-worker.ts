@@ -9,7 +9,6 @@ import {
 } from './shared/message-types.js';
 import { loadSettings } from './shared/settings.js';
 
-const DEBUG_LOG_ENABLED = true;
 const LOG_PREFIX = '[BackAsClose][Background]';
 
 interface RestoredTabInfo {
@@ -21,17 +20,6 @@ interface RestoredTabInfo {
 
 let lastClosedTab: RestoredTabInfo | null = null;
 let bannerTabId: number | null = null;
-
-function logDebug(message: string, context: Record<string, unknown> = {}): void {
-    if (!DEBUG_LOG_ENABLED) {
-        return;
-    }
-
-    console.debug(`${LOG_PREFIX} ${message}`, {
-        at: new Date().toISOString(),
-        ...context
-    });
-}
 
 function clearRestoreTimeout(): void {
     if (lastClosedTab?.timeoutId) {
@@ -52,7 +40,7 @@ async function hideRestoreBanner(): Promise<void> {
         await chrome.tabs.sendMessage(targetTabId, createHideRestoreBannerMessage());
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logDebug('Failed to hide restore banner.', { tabId: targetTabId, error: errorMessage });
+        console.debug(`${LOG_PREFIX} Failed to hide restore banner.`, { at: new Date().toISOString(), tabId: targetTabId, error: errorMessage });
     }
 }
 
@@ -62,7 +50,7 @@ async function showRestoreBanner(timeoutMs: number, closedTabTitle?: string): Pr
     const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
 
     if (!activeTab?.id) {
-        logDebug('No active tab available for restore banner.');
+        console.debug(`${LOG_PREFIX} No active tab available for restore banner.`);
         return;
     }
 
@@ -75,10 +63,10 @@ async function showRestoreBanner(timeoutMs: number, closedTabTitle?: string): Pr
             )
         );
         bannerTabId = activeTab.id;
-        logDebug('Restore banner shown.', { tabId: activeTab.id });
+        console.debug(`${LOG_PREFIX} Restore banner shown.`, { at: new Date().toISOString(), tabId: activeTab.id });
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logDebug('Failed to show restore banner.', { tabId: activeTab.id, error: errorMessage });
+        console.debug(`${LOG_PREFIX} Failed to show restore banner.`, { at: new Date().toISOString(), tabId: activeTab.id, error: errorMessage });
     }
 }
 
@@ -88,14 +76,14 @@ function setRestoreTimeout(timeoutMs: number): void {
     clearRestoreTimeout();
 
     lastClosedTab.timeoutId = setTimeout(() => {
-        logDebug('Restore timeout expired, discarding tab info.', { url: lastClosedTab?.url });
+        console.debug(`${LOG_PREFIX} Restore timeout expired, discarding tab info.`, { at: new Date().toISOString(), url: lastClosedTab?.url });
         lastClosedTab = null;
         void hideRestoreBanner();
     }, timeoutMs) as unknown as number;
 }
 
 async function handleCloseTab(tabId: number, url?: string, title?: string): Promise<void> {
-    logDebug('Recording closed tab for potential restore.', { tabId, url, title });
+    console.debug(`${LOG_PREFIX} Recording closed tab for potential restore.`, { at: new Date().toISOString(), tabId, url, title });
 
     const settings = await loadSettings();
     const timeoutMs = settings.restoreTimeoutSeconds * 1000;
@@ -112,17 +100,17 @@ async function handleCloseTab(tabId: number, url?: string, title?: string): Prom
 
 function handleTryRestore(sendResponse: (response: WorkerResponse) => void): void {
     if (!lastClosedTab) {
-        logDebug('No tab available for restore.');
+        console.debug(`${LOG_PREFIX} No tab available for restore.`);
         sendResponse({ handled: true, action: 'no-restore' });
         return;
     }
 
-    logDebug('Restore available, creating new tab.', { url: lastClosedTab.url });
+    console.debug(`${LOG_PREFIX} Restore available, creating new tab.`, { at: new Date().toISOString(), url: lastClosedTab.url });
     const tabUrl = lastClosedTab.url;
 
     chrome.tabs.create({ url: tabUrl })
         .then((newTab) => {
-            logDebug('Tab restored successfully.', { tabId: newTab.id, url: tabUrl });
+            console.debug(`${LOG_PREFIX} Tab restored successfully.`, { at: new Date().toISOString(), tabId: newTab.id, url: tabUrl });
             clearRestoreTimeout();
             lastClosedTab = null;
             void hideRestoreBanner();
@@ -130,7 +118,7 @@ function handleTryRestore(sendResponse: (response: WorkerResponse) => void): voi
         })
         .catch((error: unknown) => {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            logDebug('Failed to restore tab.', { error: errorMessage });
+            console.debug(`${LOG_PREFIX} Failed to restore tab.`, { at: new Date().toISOString(), error: errorMessage });
             sendResponse({ handled: false, error: errorMessage, action: 'no-restore' });
         });
 }
@@ -163,11 +151,11 @@ chrome.runtime.onMessage.addListener((
         const tabUrl = sender.tab.url;
         const tabTitle = sender.tab.title;
 
-        logDebug('Received CLOSE_TAB request.', { tabId, url: tabUrl, title: tabTitle });
+        console.debug(`${LOG_PREFIX} Received CLOSE_TAB request.`, { at: new Date().toISOString(), tabId, url: tabUrl, title: tabTitle });
 
         chrome.tabs.remove(tabId)
             .then(() => {
-                logDebug('Tab closed successfully.', { tabId });
+                console.debug(`${LOG_PREFIX} Tab closed successfully.`, { at: new Date().toISOString(), tabId });
                 return handleCloseTab(tabId, tabUrl, tabTitle);
             })
             .then(() => {
@@ -175,7 +163,7 @@ chrome.runtime.onMessage.addListener((
             })
             .catch((error: unknown) => {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                logDebug('Failed to close tab.', { tabId, error: errorMessage });
+                console.debug(`${LOG_PREFIX} Failed to close tab.`, { at: new Date().toISOString(), tabId, error: errorMessage });
                 sendResponse({ handled: false, error: errorMessage });
             });
 
@@ -183,7 +171,7 @@ chrome.runtime.onMessage.addListener((
     }
 
     if (isTryRestoreMessage(message) || isRestoreTabMessage(message)) {
-        logDebug('Received restore request.');
+        console.debug(`${LOG_PREFIX} Received restore request.`);
         handleTryRestore(sendResponse);
         return true;
     }
@@ -191,4 +179,4 @@ chrome.runtime.onMessage.addListener((
     return false;
 });
 
-logDebug('Background service worker initialized.');
+console.debug(`${LOG_PREFIX} Background service worker initialized.`);

@@ -7,24 +7,13 @@ import {
     type ShowRestoreBannerMessage
 } from './shared/message-types.js';
 
-const DEBUG_LOG_ENABLED = true;
 const LOG_PREFIX = '[BackAsClose][Content]';
 
 let pageUnloading = false;
 let restoreBannerElement: HTMLDivElement | null = null;
 let restoreBannerTimerId: number | null = null;
 let restoreBannerCountdownIntervalId: number | null = null;
-
-function logDebug(message: string, context: Record<string, unknown> = {}): void {
-    if (!DEBUG_LOG_ENABLED) {
-        return;
-    }
-
-    console.debug(`${LOG_PREFIX} ${message}`, {
-        at: new Date().toISOString(),
-        ...context
-    });
-}
+let backNavigationTimerId: number | null = null;
 
 function clearRestoreBannerTimer(): void {
     if (restoreBannerTimerId !== null) {
@@ -208,7 +197,7 @@ function showRestoreBanner(timeoutSeconds: number, closedTabTitle?: string): voi
             })
             .catch((error: unknown) => {
                 const errorMessage = error instanceof Error ? error.message : String(error);
-                logDebug('Failed to restore tab from banner action.', { error: errorMessage });
+                console.debug(`${LOG_PREFIX} Failed to restore tab from banner action.`, { at: new Date().toISOString(), error: errorMessage });
             });
     });
 
@@ -230,85 +219,34 @@ function isHideRestoreBannerMessage(message: unknown): message is HideRestoreBan
 }
 
 async function handleBackIntent(): Promise<void> {
-    if (pageUnloading) {
-        logDebug('Ignoring back because page is unloading.');
-        return;
-    }
-
-    const prevPage = window.location.href;
-    logDebug('Handling back intent.', { currentUrl: prevPage });
-    window.history.back();
-
-    await new Promise<void>((resolve) => setTimeout(resolve, 200));
-
-    const currentUrl = window.location.href;
-    logDebug('Back navigation attempt completed.', { currentUrl });
-
-    if (currentUrl === prevPage) {
-        try {
-            logDebug('No history entry to go back to, sending CLOSE_TAB message.');
-            await chrome.runtime.sendMessage(createCloseTabMessage());
-            logDebug('Tab close triggered, waiting for background reminder.');
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            logDebug('Error sending CLOSE_TAB message.', { error: errorMessage });
-        }
-    }
+    backNavigationTimerId = window.setTimeout(() => {
+        console.debug(`${LOG_PREFIX} Back navigation timeout reached.`);
+        chrome.runtime.sendMessage(createCloseTabMessage(), (response) => {});
+    }, 100);
 }
 
 async function handleForwardIntent(): Promise<void> {
     if (pageUnloading) {
-        logDebug('Ignoring forward because page is unloading.');
+        console.debug(`${LOG_PREFIX} Ignoring forward because page is unloading.`);
         return;
     }
 
-    logDebug('Handling forward intent.');
+    console.debug(`${LOG_PREFIX} Handling forward intent.`);
 
     try {
         const response = await chrome.runtime.sendMessage(createTryRestoreMessage());
 
         if (response?.action === 'restore-tab' && response.restoredUrl) {
-            logDebug('Restore available, restoring tab.');
+            console.debug(`${LOG_PREFIX} Restore available, restoring tab.`);
             hideRestoreBanner();
             return;
         }
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logDebug('Error checking restore availability.', { error: errorMessage });
+        console.debug(`${LOG_PREFIX} Error checking restore availability.`, { at: new Date().toISOString(), error: errorMessage });
     }
 
-    logDebug('No restore available, performing normal forward.');
-    window.history.forward();
-}
-
-function handleBackMouseEvent(event: MouseEvent): void {
-    if (event.button !== 3) {
-        return;
-    }
-
-    logDebug('Captured mouse back event.', {
-        eventType: event.type,
-        button: event.button,
-        buttons: event.buttons
-    });
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void handleBackIntent();
-}
-
-function handleForwardMouseEvent(event: MouseEvent): void {
-    if (event.button !== 4) {
-        return;
-    }
-
-    logDebug('Captured mouse forward event.', {
-        eventType: event.type,
-        button: event.button,
-        buttons: event.buttons
-    });
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void handleForwardIntent();
+    console.debug(`${LOG_PREFIX} No restore available, performing normal forward.`);
 }
 
 function handleKeyDown(event: KeyboardEvent): void {
@@ -319,27 +257,49 @@ function handleKeyDown(event: KeyboardEvent): void {
             target.tagName === 'INPUT' ||
             target.tagName === 'TEXTAREA' ||
             target.tagName === 'SELECT');
+
+    if(isEditable) return;
+    
     const isBackShortcut = event.key === 'BrowserBack' || (event.altKey && event.key === 'ArrowLeft');
     const isForwardShortcut = event.key === 'BrowserForward' || (event.altKey && event.key === 'ArrowRight');
 
-    if (isBackShortcut && !isEditable) {
-        logDebug('Captured keyboard back shortcut.', {
+    if (isBackShortcut) {
+        console.debug(`${LOG_PREFIX} Captured keyboard back shortcut.`, {
+            at: new Date().toISOString(),
             key: event.key,
             altKey: event.altKey
         });
-        event.preventDefault();
-        event.stopImmediatePropagation();
         void handleBackIntent();
+    }
+    else if (isForwardShortcut) {
+        console.debug(`${LOG_PREFIX} Captured keyboard forward shortcut.`, {
+            at: new Date().toISOString(),
+            key: event.key,
+            altKey: event.altKey
+        });
+        void handleForwardIntent();
+    }
+    else {
         return;
     }
+}
 
-    if (isForwardShortcut && !isEditable) {
-        logDebug('Captured keyboard forward shortcut.', {
-            key: event.key,
-            altKey: event.altKey
+function handleAuxClick(event: MouseEvent): void {
+    if (event.button === 3) {
+        console.debug(`${LOG_PREFIX} Captured mouse back event.`, {
+            at: new Date().toISOString(),
+            eventType: event.type,
+            button: event.button,
+            buttons: event.buttons
         });
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        void handleBackIntent();
+    } else if (event.button === 4) {
+        console.debug(`${LOG_PREFIX} Captured mouse forward event.`, {
+            at: new Date().toISOString(),
+            eventType: event.type,
+            button: event.button,
+            buttons: event.buttons
+        });
         void handleForwardIntent();
     }
 }
@@ -359,20 +319,28 @@ export function main(): void {
         return false;
     });
 
-    window.addEventListener('auxclick', (event) => {
-        if ((event as MouseEvent).button === 3) {
-            handleBackMouseEvent(event as MouseEvent);
-        } else if ((event as MouseEvent).button === 4) {
-            handleForwardMouseEvent(event as MouseEvent);
-        }
-    }, true);
+    window.addEventListener('auxclick', handleAuxClick, true);
 
     window.addEventListener('keydown', handleKeyDown, true);
 
-    window.addEventListener('beforeunload', () => {
-        pageUnloading = true;
-        logDebug('Page unloading detected. Stopping event handling.');
+    window.addEventListener('popstate', (event: PopStateEvent) => {
+        console.debug(`${LOG_PREFIX} popstate event detected.`, { at: new Date().toISOString(), state: event.state });
+        if(backNavigationTimerId)
+        {
+            window.clearTimeout(backNavigationTimerId);
+            backNavigationTimerId = null;
+        }
     });
 
-    logDebug('Content script initialized (back+forward via auxclick/keyboard).');
+    window.addEventListener('beforeunload', () => {
+        console.debug(`${LOG_PREFIX} Page unloading detected. Stopping event handling.`);
+        pageUnloading = true;
+        if(backNavigationTimerId)
+        {
+            window.clearTimeout(backNavigationTimerId);
+            backNavigationTimerId = null;
+        }
+    });
+
+    console.debug(`${LOG_PREFIX} Content script initialized (back+forward via auxclick/keyboard).`);
 }
